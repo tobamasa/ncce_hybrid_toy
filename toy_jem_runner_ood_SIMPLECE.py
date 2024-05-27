@@ -17,50 +17,37 @@ __all__ = ['OoD_JEMRunner_SIMPLE_CE']
 # Model
 # ----------------------------------------
 class ConditionalLinear(nn.Module):
-    def __init__(self, num_in, num_out, num_classes, class_labels):
+    def __init__(self, num_in, num_out, num_classes):
         super().__init__()
         self.num_out = num_out
         self.lin = nn.Linear(num_in, num_out)
         # Noise scale embed
-        self.embed_scale = nn.Embedding(num_classes, num_out)
-        self.embed_scale.weight.data.uniform_()
-        # Class embed
-        # self.embed_class = nn.Embedding(class_labels, num_out)
-        # self.embed_class.weight.data.uniform_()
+        # self.embed_scale = nn.Embedding(num_classes, num_out)
+        # self.embed_scale.weight.data.uniform_()
 
-    def forward(self, x, s, c):
+    def forward(self, x, s):
         out = self.lin(x)
-        # when joint learning, to clf input data w/o noise
-        if s is not None:
-            gamma = self.embed_scale(s)
-            out = gamma.view(-1, self.num_out) * out
-        # when labeled data
-        # if c is not None:
-            # c_emb = self.embed_class(c)
-            # out = c_emb.view(-1, self.num_out) * out
+        # gamma = self.embed_scale(s)
+        # out = gamma.view(-1, self.num_out) * out
         return out
     
 class jemModel(nn.Module):
     def __init__(self, input_dim, num_classes, data_classes):
         super().__init__()
-        self.lin1 = ConditionalLinear(input_dim, 128, num_classes, data_classes)
-        self.lin2 = ConditionalLinear(128, 128, num_classes, data_classes)
-        # self.lin3 = nn.Linear(128, input_dim)
+        self.lin1 = ConditionalLinear(input_dim, 128, num_classes)
+        self.lin2 = ConditionalLinear(128, 128, num_classes)
         self.lin4 = nn.Linear(128, data_classes)
     
-    def forward(self, x, s, c):
-        x = F.softplus(self.lin1(x, s, c))
-        x = F.softplus(self.lin2(x, s, c))
-        # x = F.relu(self.lin1(x, s, c))
-        # x = F.relu(self.lin2(x, s, c))
-        # return self.lin3(x), self.lin4(x)
+    def forward(self, x, s):
+        x = F.softplus(self.lin1(x, s))
+        x = F.softplus(self.lin2(x, s))
         return self.lin4(x)
 
 # Choose model
 def get_model(config):
-    if config.training.mode == 'joint_learning':
-        model = jemModel(config.input_dim, config.model.num_classes, config.data.d_classes)
-        return model.to(config.device)
+    # if config.training.mode == 'joint_learning':
+    model = jemModel(config.input_dim, config.model.num_classes, config.data.d_classes)
+    return model.to(config.device)
 
 # ----------------------------------------
 # Choose Dataset
@@ -68,8 +55,8 @@ def get_model(config):
 def get_dataset(config):
     train_data = np.load(f"{config.data.dir}/train_data.npy")
     train_labels = np.load(f"{config.data.dir}/train_labels.npy")
-    test_data = np.load(f"{config.data.dir}/test_data.npy")
-    test_labels = np.load(f"{config.data.dir}/test_labels.npy")
+    test_data = np.load(f"{config.data.dir}/test_data_ood.npy")
+    test_labels = np.load(f"{config.data.dir}/test_labels_ood.npy")
     # Data loaders
     labeled_dataset = TensorDataset(torch.from_numpy(train_data).float(), torch.from_numpy(train_labels).long())
     test_dataset = TensorDataset(torch.from_numpy(test_data).float(), torch.from_numpy(test_labels).long())
@@ -82,84 +69,20 @@ def cycle(loader):
         for data in loader:
             yield data
 
-def get_ssl_dataset(config):
-    labeled_data = np.load(f"{config.data.dir}/labeled_data.npy")
-    obs_labels = np.load(f"{config.data.dir}/obs_labels.npy")
-    unlabeled_data = np.load(f"{config.data.dir}/unlabeled_data.npy")
-    unobs_labels = np.load(f"{config.data.dir}/unobs_labels.npy")
-    test_data = np.load(f"{config.data.dir}/test_data.npy")
-    test_labels = np.load(f"{config.data.dir}/test_labels.npy")
-    logging.info(f'Train: labeled samples: {len(labeled_data)}, unlabeled samples: {len(unlabeled_data)}')
-    logging.info(f'Test : labeled samples: {len(test_data)}')
-    # Data loaders
-    labeled_dataset = TensorDataset(torch.from_numpy(labeled_data).float(), torch.from_numpy(obs_labels).long())
-    unlabeled_dataset = TensorDataset(torch.from_numpy(unlabeled_data).float(), torch.from_numpy(unobs_labels).long())
-    train_dataset = ConcatDataset([labeled_dataset, unlabeled_dataset])
-    test_dataset = TensorDataset(torch.from_numpy(test_data).float(), torch.from_numpy(test_labels).long())
-    dload_train_labeled = DataLoader(labeled_dataset, batch_size=config.training.batch_size, shuffle=True)
-    dload_train_labeled = cycle(dload_train_labeled)
-    dload_train = DataLoader(train_dataset, batch_size=config.training.batch_size, shuffle=True)
-    dload_test = DataLoader(test_dataset, batch_size=config.training.batch_size, shuffle=False)
-    return dload_train, dload_train_labeled, dload_test
-
 # ----------------------------------------
 # LOSS FUNCTION
 # ----------------------------------------
 def make_perturbed_samples(samples, sigmas):
-    labels = torch.randint(0, len(sigmas), (samples.shape[0],), device=samples.device)
-    used_sigmas = sigmas[labels].view(samples.shape[0], *([1] * len(samples.shape[1:])))
-    noise = torch.randn_like(samples) * used_sigmas
-    perturbed_samples = samples + noise
-    return perturbed_samples, used_sigmas, noise, labels
+    pass
 
 def anneal_jem_dsm(scorenet, samples, sigmas, classes=None, anneal_power=2.0):
-    labels = torch.randint(0, len(sigmas), (samples.shape[0],), device=samples.device)
-    used_sigmas = sigmas[labels].view(samples.shape[0], *([1] * len(samples.shape[1:])))
-    noise = torch.randn_like(samples) * used_sigmas
-    perturbed_samples = samples + noise
-    perturbed_samples = perturbed_samples.detach().requires_grad_(True)
-    target = - 1 / (used_sigmas ** 2) * noise
-    # if classes == None: # For unconditional
-    logits = scorenet(perturbed_samples, labels, None)
-    # else: # For conditional
-        # logits = scorenet(perturbed_samples, labels, classes)
-    if classes == None:
-        # Unconditional score
-        # log_probs = F.log_softmax(logits, dim=-1)
-        scores = torch.autograd.grad(logits.logsumexp(1).sum(), perturbed_samples, create_graph=True)[0]
-    else:
-        # Conditional score
-        scores = torch.autograd.grad(torch.gather(logits, 1, classes[:, None]).sum(), perturbed_samples, create_graph=True)[0]
-
-    target = target.view(target.shape[0], -1)
-    scores = scores.view(scores.shape[0], -1)
-    loss = 1 / 2. * ((scores - target) ** 2).sum(dim=-1) * used_sigmas.squeeze() ** anneal_power
-    return loss.mean(dim=0), perturbed_samples, scores
+    pass
 
 def anneal_ce_loss(model, samples, sigmas, classes):
     pass
 
 # SIGMAS
 def get_sigmas(config):
-    if config.model.sigma_dist == 'geometric':
-        sigmas = torch.tensor(
-            np.exp(np.linspace(np.log(config.model.sigma_begin), np.log(config.model.sigma_end),
-                               config.model.num_classes))).float().to(config.device)
-    elif config.model.sigma_dist == 'uniform':
-        sigmas = torch.tensor(
-            np.linspace(config.model.sigma_begin, config.model.sigma_end, config.model.num_classes)
-        ).float().to(config.device)
-
-    else:
-        raise NotImplementedError('sigma distribution not supported')
-
-    return sigmas
-
-@torch.no_grad()
-def anneal_Langevin_dynamics(x_mod, scorenet, sigmas, n_steps_each=5, step_lr=0.000008, final_only=False, denoise=True):
-    pass
-@torch.no_grad()
-def sample_langevin_jl(model, x, c=None, n_steps=20, eps=0.5, decay=.9, temperature=0.5):
     pass
 
 # Simple Langevin for EBMs
@@ -169,8 +92,7 @@ def sample_langevin_ebm(model, x, c, n_steps=20, eps=0.5, decay=.9, temperature=
     x_sequence = [x.unsqueeze(0)]
     for s in range(n_steps):
         last_samples = x_sequence[-1][0].detach().requires_grad_(True)
-        # labels = torch.ones(x.shape[0], device=x.device).long()
-        logits = model(last_samples, None, None)
+        logits = model(last_samples, None)
         if c == None: # unconditional scores
             scores = torch.autograd.grad(logits.logsumexp(1).sum(), last_samples, create_graph=True)[0]
         else: # conditional scores
@@ -193,7 +115,7 @@ def anneal_langevin_ebm(model, x, conds, sigmas, n_steps_each=5, step_lr=0.00005
         step_size = step_lr * (sigma / sigmas[-1]) ** 2
         for s in range(n_steps_each):
             x = x.detach().requires_grad_(True)
-            logits = model(x, labels, None)
+            logits = model(x, labels)
             cs = torch.full((logits.shape[0],1), fill_value=conds, dtype=int).cuda()
             grad = torch.autograd.grad(torch.gather(logits, 1, cs).sum(), x, create_graph=True)[0]
             noise = torch.randn_like(x)
@@ -212,7 +134,7 @@ def anneal_langevin_ebm(model, x, conds, sigmas, n_steps_each=5, step_lr=0.00005
     if denoise:
         last_noise = (len(sigmas) - 1) * torch.ones(x.shape[0], device=x.device)
         last_noise = last_noise.long()
-        logits = model(x, last_noise, None)
+        logits = model(x, last_noise)
         cs = torch.full((logits.shape[0],1), fill_value=conds, dtype=int).cuda()
         grad = torch.autograd.grad(torch.gather(logits, 1, cs).sum(), x, create_graph=True)[0]
         x = x + sigmas[-1] ** 2 * grad
@@ -224,14 +146,6 @@ def anneal_langevin_ebm(model, x, conds, sigmas, n_steps_each=5, step_lr=0.00005
 
 # PLOT FIGURE
 def plot_scores(datas, meshs, scores, dir, samples=None, plot_lim=None, posterior=None):
-    if datas.shape[0] == 1:
-        # y points
-        zeros = torch.zeros(10000)
-        y_cor = torch.linspace(-2, 2, 50)
-        # 1dim to 2dim (x, 0)
-        datas = torch.cat([datas, zeros[:datas.shape[-1]].reshape(1, -1)], dim=0)
-        meshs = torch.cat([meshs, y_cor[:meshs.shape[-1]].reshape(1, -1)], dim=0)
-        scores = torch.cat([scores, zeros[:scores.shape[-1]].reshape(1, -1)], dim=0)
     plt.figure(figsize=(16,12))
     # plot dataset points
     if posterior != None:
@@ -286,7 +200,7 @@ def checkpoint(model, sigmas, optimizer, epoch, step, logdir, tag, device):
 
 def make_any_scores(model, xx, xx_labels, condition=None):
     xx = xx.detach().requires_grad_(True)
-    xx_logits = model(xx, xx_labels, None)
+    xx_logits = model(xx, xx_labels)
     if condition == None:
         scores = torch.autograd.grad(xx_logits.logsumexp(1).sum(), xx, create_graph=True)[0]
     else:
@@ -296,28 +210,6 @@ def make_any_scores(model, xx, xx_labels, condition=None):
     scores_norm = np.linalg.norm(scores, axis=-1, ord=2, keepdims=True)
     scores_log1p = scores / (scores_norm + 1e-9) * np.log1p(scores_norm)
     return scores_log1p.detach().cpu()
-
-'ためしに作ってみた'
-def compare_dist(dset, xy_data, post):
-    from scipy.stats import gaussian_kde
-    from scipy.integrate import dblquad
-    # KLダイバージェンスを計算する関数
-    def kl_divergence(kde_p, kde_q, xmin, xmax, ymin, ymax):
-        # 積分領域内の各点でのKLダイバージェンスの値を計算
-        integrand = lambda x, y: kde_p([x, y]) * np.log(kde_p([x, y]) / kde_q([x, y]))
-        return dblquad(integrand, xmin, xmax, lambda x: ymin, lambda x: ymax)[0]
-    
-    xy_data = xy_data[post[:,0] > 0.5]
-
-    # カーネル密度推定によるPDFの推定
-    kde_X = gaussian_kde(dset.T.cpu())
-    # kde_Y = gaussian_kde(dset.T.cpu())
-    kde_Y = gaussian_kde(xy_data.T.cpu())
-
-    # KLダイバージェンスの計算（積分領域を適宜設定）
-    xmin, xmax, ymin, ymax = -5, 5, -5, 5
-    kl_div = kl_divergence(kde_X, kde_Y, xmin, xmax, ymin, ymax)
-    return kl_div
 
 class OoD_JEMRunner_SIMPLE_CE():
     def __init__(self, args, config):
@@ -337,19 +229,15 @@ class OoD_JEMRunner_SIMPLE_CE():
         for folder in folders:
             path = os.path.join(args.plt_fifure_path, folder)
             os.makedirs(path, exist_ok=True)
-        # for i in range(self.config.model.num_classes):
-        #     path = os.path.join(args.plt_fifure_path, 'distribution', f'sigma{i}')
-        #     os.makedirs(path, exist_ok=True)
 
 
     def train_sl(self):
         train_loader, test_loader = get_dataset(self.config)
         self.config.input_dim = self.config.data.dim * self.config.data.channels
-        xy_lim = float(self.config.data.mu) + 3.0
+        xy_lim = float(self.config.data.mu)
         tb_logger = self.config.tb_logger
 
         jem_model = get_model(self.config)
-        # score = torch.nn.DataParallel(score)
         optimizer = optim.Adam(jem_model.parameters(), lr=self.config.optim.lr, weight_decay=self.config.optim.weight_decay,
                         betas=(self.config.optim.beta1, 0.999), amsgrad=self.config.optim.amsgrad,
                         eps=self.config.optim.eps)
@@ -357,12 +245,12 @@ class OoD_JEMRunner_SIMPLE_CE():
         start_epoch = 0
         step = 0
         # Noise labels 0 > 1 > 2 >..
-        sigmas = get_sigmas(self.config)
+        # sigmas = get_sigmas(self.config)
         best_test_acc = 0.
         best_test_dsm = 2.
         pseudo_dloader = None
         for epoch in range(start_epoch, self.config.training.n_epochs):
-            dsm_losses, dsm_conds, dsm_unconds, ce_losses, total_losses, train_accs, train_accs_p, consistencies = [], [], [], [], [], [], [], []
+            ce_losses, total_losses, train_accs, train_accs_p = [], [], [], []
             for i, (X, y) in enumerate(train_loader):
                 jem_model.train()
                 step += 1
@@ -375,14 +263,14 @@ class OoD_JEMRunner_SIMPLE_CE():
                     pseudo_X, pseudo_Y = pseudo_X.to(self.config.device), pseudo_Y.to(self.config.device)
                 
                 # classification
-                logits = jem_model(X, None, None)
+                logits = jem_model(X, None)
                 acc = (logits.max(1)[1] == y).float().mean()
                 ce_loss = nn.CrossEntropyLoss()(logits, y)
                 L += ce_loss
 
                 # pseudo_classification
                 if pseudo_dloader is not None:
-                    logits_p = jem_model(pseudo_X, None, None)
+                    logits_p = jem_model(pseudo_X, None)
                     acc_p = (logits_p.max(1)[1] == pseudo_Y).float().mean()
                     ce_loss_p = nn.CrossEntropyLoss()(logits_p, pseudo_Y)
                     L += ce_loss_p
@@ -396,12 +284,11 @@ class OoD_JEMRunner_SIMPLE_CE():
                 optimizer.zero_grad()
                 L.backward()
                 optimizer.step()
-            
             tb_logger.add_scalar('train/ce_loss', np.mean(ce_losses), global_step=epoch)
             tb_logger.add_scalar('train/total_loss', np.mean(total_losses), global_step=epoch)
             tb_logger.add_scalar('train/acc', np.mean(train_accs), global_step=epoch)
-            logging.info("epoch: {}, step: {}, dsm: {}, ce: {}, acc: {}"
-                         .format(epoch, step, np.mean(dsm_losses), np.mean(ce_losses), np.mean(train_accs)))
+            logging.info("epoch: {}, step: {}, dsm: 0, ce: {}, acc: {}, pacc: {}"
+                         .format(epoch, step, np.mean(ce_losses), np.mean(train_accs), np.mean(train_accs_p)))
             # Eval
             if epoch % 100 == 0:
                 test_jem = jem_model
@@ -412,11 +299,11 @@ class OoD_JEMRunner_SIMPLE_CE():
                     test_y = test_y.to(self.config.device)
                     # 一番小さいnoiseがかかっている体で
                     # test_labels = torch.randint(len(sigmas)-1, len(sigmas), (test_X.shape[0],)).cuda()
-                    test_dsm_uncond, t_perturbed_data, _ = anneal_jem_dsm(test_jem, test_X, sigmas, classes=None, anneal_power=self.config.training.anneal_power)
+                    # test_dsm_uncond, t_perturbed_data, _ = anneal_jem_dsm(test_jem, test_X, sigmas, classes=None, anneal_power=self.config.training.anneal_power)
+                    # test_dsms.append(test_dsm_uncond.item())
                     with torch.no_grad():
                         # class unconditional
-                        test_dsms.append(test_dsm_uncond.item())
-                        t_logits = test_jem(test_X, None, None)
+                        t_logits = test_jem(test_X, None)
                         test_post = nn.Softmax(dim=1)(t_logits).detach().cpu()
                         test_acc = (t_logits.max(1)[1] == test_y).float().mean()
                         test_ce_loss = nn.CrossEntropyLoss()(t_logits, test_y)
@@ -428,8 +315,8 @@ class OoD_JEMRunner_SIMPLE_CE():
                 tb_logger.add_scalar('test/ce_loss', np.mean(test_ces), global_step=epoch)
                 tb_logger.add_scalar('test/acc', np.mean(test_acces), global_step=epoch)
                 # tb_logger.add_scalar('test/ece', calibration_score, global_step=epoch)
-                logging.info("epoch: {}, step: {}, test_dsm: {}, test_ce: {}, test_acc: {}"
-                             .format(epoch, step, np.mean(test_dsms), np.mean(test_ces), np.mean(test_acces)))
+                logging.info("epoch: {}, step: {}, test_dsm: 0, test_ce: {}, test_acc: {}"
+                             .format(epoch, step, np.mean(test_ces), np.mean(test_acces)))
                 del test_jem, test_dsms, test_ces, test_acces, test_post
                 
                 # make pseudo data
@@ -437,7 +324,6 @@ class OoD_JEMRunner_SIMPLE_CE():
                 if epoch % 500 ==0:
                     test_model = jem_model.eval()
                     # ∇_x log p(x | y = in-distribution)を計算 sampling
-                    # init_samples = torch.Tensor([[xy_lim, xy_lim], [xy_lim, -xy_lim], [-xy_lim, xy_lim], [-xy_lim, -xy_lim]]).to(self.config.device)
                     init_samples = xy_lim*torch.randn(self.config.sampling.num_samples, 2).to(self.config.device)
                     if self.config.sampling.mode == 'simple':
                         samples = sample_langevin_ebm(test_model, init_samples, c=0, n_steps=self.config.sampling.n_steps,
@@ -491,7 +377,7 @@ class OoD_JEMRunner_SIMPLE_CE():
                     # P(y|x) for all samples
                     all_data = X.clone().cuda()
                     # all_labels = torch.randint(0, len(sigmas), (all_data.shape[0],)).cuda()
-                    all_logits = jem_model(all_data, None, None)
+                    all_logits = jem_model(all_data, None)
                     all_post = nn.Softmax(dim=1)(all_logits).detach().cpu()
 
                     # Posterior Distribution
@@ -499,18 +385,13 @@ class OoD_JEMRunner_SIMPLE_CE():
                         X, Y = np.meshgrid(np.linspace(-xy_lim, xy_lim, 100), (np.linspace(-xy_lim, xy_lim, 100)))
                         xy = np.stack(np.meshgrid(np.linspace(-xy_lim, xy_lim, 100), np.linspace(-xy_lim, xy_lim, 100)), axis=-1).reshape(-1, 2)
                         xy = torch.from_numpy(xy.astype(np.float32)).clone().cuda()
-                        logits = jem_model(xy, None, None).detach().cpu()
+                        logits = jem_model(xy, None).detach().cpu()
                         post = F.softmax(logits, dim=1).numpy()
                         plt.figure(figsize=(16,12))
                         plt.contourf(X, Y, post[:,0].reshape(100,100), 20, cmap='seismic')
                         # plt.colorbar(cp) # Add a colorbar to a plot
                         plt.savefig(os.path.join(self.args.plt_fifure_path, f"distribution/sigma_none/post_{epoch}.png"))
                         plt.close()
-
-                    # if epoch%1000 == 0
-                    if False:
-                        kl_dv = compare_dist(all_data, xy, post)
-                        tb_logger.add_scalar('kl_div/atai', kl_dv, global_step=epoch)
 
                     uncond = make_any_scores(jem_model, xx, None, condition=None)
                     cond_0 = make_any_scores(jem_model, xx, None, condition=0)

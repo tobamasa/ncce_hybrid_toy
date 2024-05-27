@@ -2,7 +2,7 @@ training:
   batch_size: 50000
   n_epochs: 8000
   anneal_power: 2
-  mode: joint_learning
+  mode: ncce
   noise_clf: true
   cr_weight: 0.0
   ce_weight: 1.0
@@ -25,14 +25,16 @@ sampling:
   num_samples: 500
 
 data:
-  # dir: ./dataset/2024/ood_sl/moon/0_ood
-  # dir: ./dataset/2024/ood_sl/roll/noise_100/0
-  # dir: ./dataset/2024/ood_sl/circles/noise_010/0
-  dir: ./dataset/2024/ood_sl/circles/noise_010/0
-  # dir: ./dataset/2024/ood_sl/blobs/5_centers/0
+  # dir: ./dataset/moon/noise10_seed0
+  dir: ./dataset/circles/noise10_seed0
+  # dir: ./dataset/roll/noise10_seed0
+  # dir: ./dataset/blobs/std03_seed0
   dim: 2
   channels: 1
-  mu: -1
+  # mu: 5
+  mu: 2
+  # mu: 2
+  # mu: 3
   d_classes: 2
 
 model:

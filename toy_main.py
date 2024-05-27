@@ -11,12 +11,8 @@ import numpy as np
 import torch.utils.tensorboard as tb
 import copy
 # from toy_ncsn_runner import *
-from toy_ncsn_runner_v2 import *
-from toy_ncsn_runner_cg import *
-from toy_ncsn_runner_jem import *
 from toy_jem_runner_ood import *
 from toy_jem_runner_ood_SIMPLECE import *
-from toy_jem_runner_ood_NOISE_UNCOND import *
 
 import os
 
@@ -185,34 +181,40 @@ def main():
     print("<" * 80)
 
     try:
-        runner = NCSNRunner(args, config)
-        runner_jem = JEM_NCSNRunner(args, config)
-        runner_cg = CG_NCSNRunner(args, config)
+        # runner = NCSNRunner(args, config)
+        # runner_jem = JEM_NCSNRunner(args, config)
+        # runner_cg = CG_NCSNRunner(args, config)
         runner_ood = OoD_JEMRunner(args, config)
-        runner_ood_compare = OoD_JEMRunner_SIMPLE_CE(args, config)
-        runner_ood_compare_2 = OoD_JEMRunner_NOISE_UNCOND(args, config)
-        if config.training.mode == 'joint_learning':
-            runner_ood_compare.train_sl()
-            5/0
+        runner_ood_ce = OoD_JEMRunner_SIMPLE_CE(args, config)
+        if config.training.mode == 'wo_noise':
+            runner_ood_ce.train_sl()
+            1/0
+        elif config.training.mode == 'ncce':
             runner_ood.train_sl()
             1/0
-            runner_ood_compare_2.train_sl()
-            # runner_jem.train_sl()
-            # runner.joint_learning_train()
-            # 1/0
-            # runner.joint_learning_train_sl()
-            # runner.joint_learning_train_ssl()
-            1/0
-        elif config.training.mode == 'clf_guided':
-            runner_cg.train_clf_guided_ssl()
-            # runner_cg.train_clf_guided_sl()
-            1/0
-        elif config.training.mode == 'clf':
-            runner.joint_learning_train_ssl()
-            1/0
-        else:
-            runner.train()
-            1/0
+        # runner_ood_compare_2 = OoD_JEMRunner_NOISE_UNCOND(args, config)
+        # if config.training.mode == 'joint_learning':
+        #     runner_ood_compare.train_sl()
+        #     5/0
+        #     runner_ood.train_sl()
+        #     1/0
+        #     runner_ood_compare_2.train_sl()
+        #     # runner_jem.train_sl()
+        #     # runner.joint_learning_train()
+        #     # 1/0
+        #     # runner.joint_learning_train_sl()
+        #     # runner.joint_learning_train_ssl()
+        #     1/0
+        # elif config.training.mode == 'clf_guided':
+        #     runner_cg.train_clf_guided_ssl()
+        #     # runner_cg.train_clf_guided_sl()
+        #     1/0
+        # elif config.training.mode == 'clf':
+        #     runner.joint_learning_train_ssl()
+        #     1/0
+        # else:
+        #     runner.train()
+        #     1/0
         # if args.test:
         #     if config.training.jointlearning:
         #         os.makedirs(os.path.join(args.log_path, f'test_clf_{config.test.load_model}'))
