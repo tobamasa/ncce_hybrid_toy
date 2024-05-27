@@ -1,0 +1,53 @@
+training:
+  batch_size: 10000
+  n_epochs: 5000
+  anneal_power: 2
+  # joint_learning: true
+  mode: joint_learning
+  noise_clf: true
+  cr_weight: 0.0
+  ce_weight: 1.0
+
+sampling:
+  mode: simple
+  n_steps: 20
+  eps: 0.1
+  decay: 0.9
+  temperature: 0.5
+  # step_lr: 0.0000062
+  # n_steps_each: 2
+  # step_lr: 0.0000001
+  # step_lr: 0.00000001
+  # denoise: true
+
+data:
+  # dir: ./dataset/isotropic_Gaussian/mu_1/0
+  # dir: ./dataset/swiss_roll/0
+  # dir: ./dataset/moons/ssl/3
+  # dir: ./dataset/circles/0
+  # dir: ./dataset/multiclass/mu_1/0/
+  # dir: ./dataset/2024/sl_gaussian/1000/tkzk0
+  # dir: ./dataset/2024/ssl_extremely_gaussian/500/0
+  # dir: ./dataset/artificial/100
+  dim: 2
+  channels: 1
+  mu: 3
+  d_classes: 2
+
+model:
+  sigma_begin: 1
+  num_classes: 4
+  sigma_end: 0.01
+  # sigma_begin: 10
+  # num_classes: 50
+  sigma_dist: geometric
+  # sigma_end: 0.001
+  ngf: 128
+
+optim:
+  weight_decay: 0.000
+  optimizer: "Adam"
+  lr: 0.001
+  beta1: 0.9
+  amsgrad: false
+  eps: 0.00000001
