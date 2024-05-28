@@ -10,6 +10,7 @@ import torch
 import numpy as np
 import torch.utils.tensorboard as tb
 import copy
+import random
 # from toy_ncsn_runner import *
 from toy_jem_runner_ood import *
 from toy_jem_runner_ood_WOEMB import *
@@ -148,6 +149,7 @@ def parse_args_and_config():
     new_config.device = device
 
     # set random seed
+    random.seed(args.seed)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     if torch.cuda.is_available():

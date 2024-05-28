@@ -2,7 +2,7 @@ training:
   batch_size: 50000
   n_epochs: 8000
   anneal_power: 2
-  mode: ncce
+  mode: w_dsm
   noise_clf: true
   cr_weight: 0.0
   ce_weight: 1.0
@@ -26,15 +26,15 @@ sampling:
 
 data:
   # dir: ./dataset/moon/noise10_seed0
-  dir: ./dataset/circles/noise10_seed0
+  # dir: ./dataset/circles/noise10_seed0
   # dir: ./dataset/roll/noise10_seed0
-  # dir: ./dataset/blobs/std03_seed0
+  dir: ./dataset/blobs/std03_seed0
   dim: 2
   channels: 1
   # mu: 5
-  mu: 2
   # mu: 2
-  # mu: 3
+  # mu: 2
+  mu: 4
   d_classes: 2
 
 model:

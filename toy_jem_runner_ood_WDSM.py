@@ -126,23 +126,7 @@ def get_sigmas(config):
 # Simple Langevin for EBMs
 # w/o aneel
 def sample_langevin_ebm(model, x, c, n_steps=20, eps=0.5, decay=.9, temperature=0.5):
-    # その入力サンプルに対して勾配取得が必要？
-    x_sequence = [x.unsqueeze(0)]
-    for s in range(n_steps):
-        last_samples = x_sequence[-1][0].detach().requires_grad_(True)
-        # なんで1?これ怪しいよな
-        labels = torch.ones(x.shape[0], device=x.device).long()
-        logits = model(last_samples, labels, None)
-        if c == None: # unconditional scores
-            scores = torch.autograd.grad(logits.logsumexp(1).sum(), last_samples, create_graph=True)[0]
-        else: # conditional scores
-            cs = torch.full((logits.shape[0],1), fill_value=c, dtype=int).cuda()
-            scores = torch.autograd.grad(torch.gather(logits, 1, cs).sum(), last_samples, create_graph=True)[0]
-        z_t = torch.rand(x.size(), device=x.device)
-        x = x + (eps / 2) * scores + (np.sqrt(eps) * temperature * z_t)
-        x_sequence.append(x.unsqueeze(0))
-        eps *= decay
-    return torch.cat(x_sequence)
+    pass
 
 # Simple Langevin for EBMs
 def anneal_langevin_ebm(model, x, conds, sigmas, n_steps_each=5, step_lr=0.00005, final_only=False, denoise=True, verbose=True):
@@ -294,7 +278,7 @@ class OoD_JEMRunner_WDSM():
         best_test_dsm = 2.
         pseudo_dloader = None
         for epoch in range(start_epoch, self.config.training.n_epochs):
-            ce_losses, total_losses, train_accs, train_accs_p = [], [], [], []
+            dsm_losses, ce_losses, total_losses, train_accs, train_accs_p = [], [], [], [], []
             for i, (X, y) in enumerate(train_loader):
                 jem_model.train()
                 step += 1
@@ -314,13 +298,17 @@ class OoD_JEMRunner_WDSM():
                     L += ce_loss_p
                     train_accs_p.append(acc_p.item())
                     tb_logger.add_scalar('train/acc_p', np.mean(train_accs_p), global_step=epoch)
+                
+                # class unconditional
+                dsm_uncond, p_samples_uncond, scores_uncond = anneal_jem_dsm(jem_model, X, sigmas, classes=None, anneal_power=self.config.training.anneal_power)
 
                 # Total LOSS
-                L += ce_loss
+                L += dsm_uncond + ce_loss
                 # LOSS SPIKE CHECK
                 # if ce_loss.item() > 1.0:
                 #     trai_post = nn.Softmax(dim=1)(logits).detach().cpu()
                 #     test_plot(l_perterbed.T.cpu(), os.path.join(self.args.test_path, f"train_div_{epoch}.png"), plot_lim=xy_lim, posterior=trai_post)
+                dsm_losses.append(dsm_uncond.item())
                 ce_losses.append(ce_loss.item())
                 total_losses.append(L.item())
                 train_accs.append(acc.item())
@@ -328,11 +316,12 @@ class OoD_JEMRunner_WDSM():
                 optimizer.zero_grad()
                 L.backward()
                 optimizer.step()
+            tb_logger.add_scalar('train/dsm_loss', np.mean(dsm_losses), global_step=epoch)
             tb_logger.add_scalar('train/ce_loss', np.mean(ce_losses), global_step=epoch)
             tb_logger.add_scalar('train/total_loss', np.mean(total_losses), global_step=epoch)
             tb_logger.add_scalar('train/acc', np.mean(train_accs), global_step=epoch)
-            logging.info("epoch: {}, step: {}, dsm: 0, ce: {}, acc: {}, pacc: {}"
-                         .format(epoch, step, np.mean(ce_losses), np.mean(train_accs), np.mean(train_accs_p)))
+            logging.info("epoch: {}, step: {}, dsm: {}, ce: {}, acc: {}, pacc: {}"
+                         .format(epoch, step, np.mean(dsm_losses), np.mean(ce_losses), np.mean(train_accs), np.mean(train_accs_p)))
             # Eval
             if epoch % 100 == 0:
                 test_jem = jem_model
