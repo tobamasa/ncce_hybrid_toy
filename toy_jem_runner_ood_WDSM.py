@@ -11,7 +11,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 
-__all__ = ['OoD_JEMRunner']
+__all__ = ['OoD_JEMRunner_WDSM']
 
 # ----------------------------------------
 # Model
@@ -252,7 +252,7 @@ def make_any_scores(model, xx, xx_labels, condition=None):
     scores_log1p = scores / (scores_norm + 1e-9) * np.log1p(scores_norm)
     return scores_log1p.detach().cpu()
 
-class OoD_JEMRunner():
+class OoD_JEMRunner_WDSM():
     def __init__(self, args, config):
         self.args = args
         self.config = config

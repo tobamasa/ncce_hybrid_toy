@@ -11,7 +11,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 
-__all__ = ['OoD_JEMRunner']
+__all__ = ['OoD_JEMRunner_WOEMB']
 
 # ----------------------------------------
 # Model
@@ -22,13 +22,13 @@ class ConditionalLinear(nn.Module):
         self.num_out = num_out
         self.lin = nn.Linear(num_in, num_out)
         # Noise scale embed
-        self.embed_scale = nn.Embedding(num_classes, num_out)
-        self.embed_scale.weight.data.uniform_()
+        # self.embed_scale = nn.Embedding(num_classes, num_out)
+        # self.embed_scale.weight.data.uniform_()
 
     def forward(self, x, s):
         out = self.lin(x)
-        gamma = self.embed_scale(s)
-        out = gamma.view(-1, self.num_out) * out
+        # gamma = self.embed_scale(s)
+        # out = gamma.view(-1, self.num_out) * out
         return out
     
 class jemModel(nn.Module):
@@ -252,7 +252,7 @@ def make_any_scores(model, xx, xx_labels, condition=None):
     scores_log1p = scores / (scores_norm + 1e-9) * np.log1p(scores_norm)
     return scores_log1p.detach().cpu()
 
-class OoD_JEMRunner():
+class OoD_JEMRunner_WOEMB():
     def __init__(self, args, config):
         self.args = args
         self.config = config

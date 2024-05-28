@@ -329,10 +329,11 @@ class OoD_JEMRunner_SIMPLE_CE():
                         samples = sample_langevin_ebm(test_model, init_samples, c=0, n_steps=self.config.sampling.n_steps,
                                                     eps=self.config.sampling.eps, decay=self.config.sampling.decay, temperature=self.config.sampling.temperature).detach().cpu()
                     else:
-                        samples = anneal_langevin_ebm(test_model, init_samples, 0, sigmas,
-                                                  n_steps_each=self.config.sampling.n_steps_each, step_lr=self.config.sampling.step_lr,
-                                                  final_only=self.config.sampling.final_only, denoise=self.config.sampling.denoise,
-                                                  verbose=self.config.sampling.verbose).detach().cpu()
+                        # samples = anneal_langevin_ebm(test_model, init_samples, 0, sigmas,
+                        #                           n_steps_each=self.config.sampling.n_steps_each, step_lr=self.config.sampling.step_lr,
+                        #                           final_only=self.config.sampling.final_only, denoise=self.config.sampling.denoise,
+                        #                           verbose=self.config.sampling.verbose).detach().cpu()
+                        pass
                     # samplingを可視化
                     # plot_scores(X.T.cpu(), xx.T.cpu(), scores_log1p.T.cpu(),
                     #             os.path.join(self.args.log_sample_path, f"samples_scoreslog_{epoch}.png"),

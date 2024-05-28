@@ -12,7 +12,9 @@ import torch.utils.tensorboard as tb
 import copy
 # from toy_ncsn_runner import *
 from toy_jem_runner_ood import *
+from toy_jem_runner_ood_WOEMB import *
 from toy_jem_runner_ood_SIMPLECE import *
+from toy_jem_runner_ood_WDSM import *
 
 import os
 
@@ -185,9 +187,17 @@ def main():
         # runner_jem = JEM_NCSNRunner(args, config)
         # runner_cg = CG_NCSNRunner(args, config)
         runner_ood = OoD_JEMRunner(args, config)
+        runner_ood_woemb = OoD_JEMRunner_WOEMB(args, config)
         runner_ood_ce = OoD_JEMRunner_SIMPLE_CE(args, config)
+        runner_ood_wdsm = OoD_JEMRunner_WDSM(args, config)
         if config.training.mode == 'wo_noise':
             runner_ood_ce.train_sl()
+            1/0
+        elif config.training.mode == 'wo_emb':
+            runner_ood_woemb.train_sl()
+            1/0
+        elif config.training.mode == 'w_dsm':
+            runner_ood_wdsm.train_sl()
             1/0
         elif config.training.mode == 'ncce':
             runner_ood.train_sl()
