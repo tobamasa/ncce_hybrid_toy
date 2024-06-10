@@ -1,4 +1,6 @@
 exp/
+exp_kl_final/
+exp_mnist/
 data/
 __pycache__
 .vscode/

@@ -16,6 +16,7 @@ from toy_jem_runner_ood import *
 from toy_jem_runner_ood_WOEMB import *
 from toy_jem_runner_ood_SIMPLECE import *
 from toy_jem_runner_ood_WDSM import *
+from toy_jem_runner_ood_HIGHDIM import *
 
 import os
 
@@ -24,7 +25,7 @@ def parse_args_and_config():
 
     parser.add_argument('--config', type=str, required=True,  help='Path to the config file')
     parser.add_argument('--seed', type=int, default=1234, help='Random seed')
-    parser.add_argument('--exp', type=str, default='exp', help='Path for saving running related data.')
+    parser.add_argument('--exp', type=str, default='exp_mnist', help='Path for saving running related data.')
     parser.add_argument('--doc', type=str, required=True, help='A string for documentation purpose. '
                                                                'Will be the name of the log folder.')
     parser.add_argument('--comment', type=str, default='', help='A string for experiment comment')
@@ -192,6 +193,9 @@ def main():
         runner_ood_woemb = OoD_JEMRunner_WOEMB(args, config)
         runner_ood_ce = OoD_JEMRunner_SIMPLE_CE(args, config)
         runner_ood_wdsm = OoD_JEMRunner_WDSM(args, config)
+        runner_ood_highdim = OoD_JEMRunner_HIGHDIM(args, config)
+        runner_ood_highdim.train_sl()
+        1/0
         if config.training.mode == 'wo_noise':
             runner_ood_ce.train_sl()
             1/0
