@@ -1,0 +1,53 @@
+training:
+  batch_size: 50000
+  n_epochs: 8000
+  anneal_power: 2
+  mode: ncce
+  noise_clf: true
+  cr_weight: 0.0
+  ce_weight: 1.0
+
+# sampling:
+#   mode: simple
+#   n_steps: 40
+#   eps: 1.0
+#   decay: 0.9
+#   temperature: .3
+#   num_samples: 500
+
+sampling:
+  mode: anneal
+  n_steps_each: 5
+  step_lr: 0.000001
+  final_only: false
+  denoise: true
+  verbose: true
+  num_samples: 500
+
+data:
+  # dir: ./dataset/moon/noise10_seed0
+  # dir: ./dataset/circles/noise10_seed0
+  # dir: ./dataset/roll/noise10_seed0
+  # dir: ./dataset/blobs/std03_seed0
+  dir: ./dataset/small_circles/sigma8_0.2
+  dim: 2
+  channels: 1
+  # mu: 5
+  # mu: 2
+  mu: 2
+  # mu: 4
+  d_classes: 2
+
+model:
+  sigma_begin: 1
+  num_classes: 8
+  sigma_end: 0.001
+  sigma_dist: geometric
+
+optim:
+  weight_decay: 0.000
+  optimizer: "Adam"
+  lr: 0.005
+  beta1: 0.9
+  amsgrad: false
+  eps: 0.00000001

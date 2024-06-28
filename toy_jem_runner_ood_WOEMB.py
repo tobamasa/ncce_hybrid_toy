@@ -342,7 +342,7 @@ class OoD_JEMRunner_WOEMB():
                 # LOSS SPIKE CHECK
                 # if ce_loss.item() > 1.0:
                 #     trai_post = nn.Softmax(dim=1)(logits).detach().cpu()
-                #     test_plot(l_perterbed.T.cpu(), os.path.join(self.args.test_path, f"train_div_{epoch}.png"), plot_lim=xy_lim, posterior=trai_post)
+                #     test_plot(l_perterbed.T.cpu(), os.path.join(self.args.test_path, f"train_div_{epoch}.pdf"), plot_lim=xy_lim, posterior=trai_post)
                 ce_losses.append(ce_loss.item())
                 total_losses.append(L.item())
                 train_accs.append(acc.item())
@@ -375,8 +375,12 @@ class OoD_JEMRunner_WOEMB():
                         test_ce_loss = nn.CrossEntropyLoss()(t_logits, test_y)
                         test_ces.append(test_ce_loss.item())
                         test_acces.append(test_acc.item())
-                test_plot(test_X.T.cpu(), os.path.join(self.args.test_path, f"test_{epoch}.png"), plot_lim=xy_lim, posterior=test_post)
-                # test_plot(t_perturbed_data.T.cpu(), os.path.join(self.args.test_path, f"perturbed_test_{epoch}.png"), plot_lim=xy_lim, posterior=test_post)
+                test_plot(test_X.T.cpu(), os.path.join(self.args.test_path, f"test_{epoch}.pdf"), plot_lim=xy_lim, posterior=test_post)
+                # test_plot(t_perturbed_data.T.cpu(), os.path.join(self.args.test_path, f"perturbed_test_{epoch}.pdf"), plot_lim=xy_lim, posterior=test_post)
+                if best_test_acc < np.mean(test_acces):
+                    best_test_acc = np.mean(test_acces)
+                    logging.info("best dsm losses! save ckpt_model.")
+                    checkpoint(jem_model, sigmas, optimizer, epoch, step, self.args.ckpt_model_path, f'ckpt_model_best.pth', self.config.device)
                 tb_logger.add_scalar('test/dsm_loss', np.mean(test_dsms), global_step=epoch)
                 tb_logger.add_scalar('test/ce_loss', np.mean(test_ces), global_step=epoch)
                 tb_logger.add_scalar('test/acc', np.mean(test_acces), global_step=epoch)
@@ -412,7 +416,7 @@ class OoD_JEMRunner_WOEMB():
                         plt.xlim(-xy_lim*2, xy_lim*2)
                         plt.ylim(-xy_lim*2, xy_lim*2)
                         plt.plot()
-                        plt.savefig(os.path.join(self.args.plt_fifure_path, f"sampling/pseudo_sampleing_{epoch}.png"))
+                        plt.savefig(os.path.join(self.args.plt_fifure_path, f"sampling/pseudo_sampleing_{epoch}.pdf"))
                         plt.close()
                         # 最終サンプルだけ抽出
                         final_pseudo_samples = samples[-1]
@@ -424,7 +428,7 @@ class OoD_JEMRunner_WOEMB():
                     plt.xlim(-xy_lim*2, xy_lim*2)
                     plt.ylim(-xy_lim*2, xy_lim*2)
                     plt.plot()
-                    plt.savefig(os.path.join(self.args.plt_fifure_path, f"samples/pseudo_sample_{epoch}.png"))
+                    plt.savefig(os.path.join(self.args.plt_fifure_path, f"samples/pseudo_sample_{epoch}.pdf"))
                     plt.close()
                     labels = np.ones(final_pseudo_samples.shape[0], dtype=int)
                     # datasetに追加，ここ毎回新しくなってる
@@ -459,7 +463,7 @@ class OoD_JEMRunner_WOEMB():
                             plt.figure(figsize=(16,12))
                             plt.contourf(X, Y, post[:,0].reshape(100,100), 20, cmap='seismic')
                             # plt.colorbar(cp) # Add a colorbar to a plot
-                            plt.savefig(os.path.join(self.args.plt_fifure_path, f"distribution/sigma{l}/post_{epoch}.png"))
+                            plt.savefig(os.path.join(self.args.plt_fifure_path, f"distribution/sigma{l}/post_{epoch}.pdf"))
                             plt.close()
 
                     if True:
@@ -468,16 +472,17 @@ class OoD_JEMRunner_WOEMB():
                         if best_kl_div > kl_dv:
                             best_kl_div = kl_dv
                             logging.info("best kl div loss! {}".format(kl_dv))
+                            checkpoint(jem_model, sigmas, optimizer, epoch, step, self.args.ckpt_model_path, f'ckpt_model_best_kl.pth', self.config.device)
 
                     uncond = make_any_scores(jem_model, xx, xx_labels, condition=None)
                     cond_0 = make_any_scores(jem_model, xx, xx_labels, condition=0)
                     cond_1 = make_any_scores(jem_model, xx, xx_labels, condition=1)
                     plot_scores(all_data.T.cpu(), xx.T.detach().cpu(), uncond.T.cpu(),
-                                os.path.join(self.args.plt_fifure_path, f"uncond_scores/scoreslog_{epoch}.png"), plot_lim=xy_lim, posterior=all_post)
+                                os.path.join(self.args.plt_fifure_path, f"uncond_scores/scoreslog_{epoch}.pdf"), plot_lim=xy_lim, posterior=all_post)
                     plot_scores(all_data.T.cpu(), xx.T.detach().cpu(), cond_0.T.cpu(),
-                                os.path.join(self.args.plt_fifure_path, f"cond_scores/in-dist/0_scoreslog_{epoch}.png"), plot_lim=xy_lim, posterior=all_post)
+                                os.path.join(self.args.plt_fifure_path, f"cond_scores/in-dist/0_scoreslog_{epoch}.pdf"), plot_lim=xy_lim, posterior=all_post)
                     plot_scores(all_data.T.cpu(), xx.T.detach().cpu(), cond_1.T.cpu(),
-                                os.path.join(self.args.plt_fifure_path, f"cond_scores/outof-dist/1_scoreslog_{epoch}.png"), plot_lim=xy_lim, posterior=all_post)
+                                os.path.join(self.args.plt_fifure_path, f"cond_scores/outof-dist/1_scoreslog_{epoch}.pdf"), plot_lim=xy_lim, posterior=all_post)
     def sampling(self):
         self.config.input_dim = self.config.data.dim * self.config.data.channels
         xy_lim = float(self.config.data.mu) + 3.0
@@ -509,7 +514,7 @@ class OoD_JEMRunner_WOEMB():
         plt.xlim(-xy_lim*2, xy_lim*2)
         plt.ylim(-xy_lim*2, xy_lim*2)
         plt.plot()
-        plt.savefig(os.path.join(self.args.plt_fifure_path, f"sampling/pseudo_sampleing_{epoch}.png"))
+        plt.savefig(os.path.join(self.args.plt_fifure_path, f"sampling/pseudo_sampleing_{epoch}.pdf"))
         plt.close()
         # 最終サンプルだけ抽出
         final_pseudo_samples = samples[-1]
@@ -518,7 +523,7 @@ class OoD_JEMRunner_WOEMB():
         plt.xlim(-xy_lim*2, xy_lim*2)
         plt.ylim(-xy_lim*2, xy_lim*2)
         plt.plot()
-        plt.savefig(os.path.join(self.args.plt_fifure_path, f"samples/pseudo_sample_{epoch}.png"))
+        plt.savefig(os.path.join(self.args.plt_fifure_path, f"samples/pseudo_sample_{epoch}.pdf"))
         plt.close()
         np.save(os.path.join(self.args.ckpt_model_path, f'final_pseudo_samples_{epoch}.npy'), final_pseudo_samples.numpy())
 
@@ -533,7 +538,7 @@ scores = scores.detach().cpu()
 scores_norm = np.linalg.norm(scores, axis=-1, ord=2, keepdims=True)
 scores_log1p = scores / (scores_norm + 1e-9) * np.log1p(scores_norm)
 plot_scores(all_data.T.cpu(), xx.T.detach().cpu(), scores_log1p.T.cpu(),
-            os.path.join(self.args.plt_fifure_path, f"uncond_scores/scoreslog_{epoch}.png"), plot_lim=xy_lim, posterior=all_post)
+            os.path.join(self.args.plt_fifure_path, f"uncond_scores/scoreslog_{epoch}.pdf"), plot_lim=xy_lim, posterior=all_post)
 
 # grad(log p(x|y=0)) for conditional
 xx = xx.detach().requires_grad_(True)
@@ -544,5 +549,5 @@ scores = torch.autograd.grad(torch.gather(xx_logits, 1, condition[:, None]).sum(
 scores_norm = np.linalg.norm(scores, axis=-1, ord=2, keepdims=True)
 scores_log1p = scores / (scores_norm + 1e-9) * np.log1p(scores_norm)
 plot_scores(all_data.T.cpu(), xx.T.detach().cpu(), scores_log1p.T.cpu(),
-            os.path.join(self.args.plt_fifure_path, f"cond_scores/scoreslog_{epoch}.png"), plot_lim=xy_lim, posterior=all_post)
+            os.path.join(self.args.plt_fifure_path, f"cond_scores/scoreslog_{epoch}.pdf"), plot_lim=xy_lim, posterior=all_post)
 '''

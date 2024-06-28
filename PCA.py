@@ -6,6 +6,7 @@ from torchvision import datasets, transforms
 from sklearn.decomposition import PCA
 import numpy as np
 import matplotlib.pyplot as plt
+import joblib
 
 random_seed = 1
 torch.manual_seed(random_seed)
@@ -88,3 +89,5 @@ plt.xlabel('Principal Component 1')
 plt.ylabel('Principal Component 2')
 plt.title('MNIST PCA Projection (First Two Components)')
 plt.savefig('./mnist_fashion_pca.png')
+
+joblib.dump(pca, './pca_model.pkl')

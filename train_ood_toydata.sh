@@ -1,6 +1,7 @@
 #!/bin/bash
 
-datasets=("blobs" "circles" "moon" "roll")
+# datasets=("blobs" "circles" "moon" "roll")
+datasets=("small_circles")
 
 for a in "${datasets[@]}"; do
     python toy_main.py --doc ./WDSM/$a --config ./$a/toydata_ood_wdsm.yml --seed 0 &

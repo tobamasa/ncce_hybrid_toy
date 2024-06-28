@@ -1,6 +1,13 @@
 exp/
 exp_kl_final/
 exp_mnist/
+exp_kl_final_pdf/
+exp_circles/
+exp_circles_x10/
+exp_circles_x50/
+exp_circles_x50_sigma/
+exp_circles_x200/
+exp_circles_x2*25_sigma/
 data/
 __pycache__
 .vscode/

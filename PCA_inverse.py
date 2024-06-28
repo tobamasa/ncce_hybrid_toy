@@ -44,10 +44,10 @@ X_pca = pca.fit_transform(images)
 
 print("Original shape:", images.shape)
 print("Transformed shape:", X_pca.shape)
-for i in range(79):
+for i in range(47):
     epoch = (i+1)*100
     # 圧縮データのロード
-    compressed_data = np.load(f"./exp_mnist/logs/mnistall/ckpts/final_pseudo_samples_{epoch}.npy")
+    compressed_data = np.load(f"./exp_mnist/logs/mnist_bigmodel/ckpts/final_pseudo_samples_{epoch}.npy")
     # 復元
     restored_data = pca.inverse_transform(compressed_data)
     print("Restored data shape:", restored_data.shape)
@@ -59,7 +59,7 @@ for i in range(79):
     # グリッド画像の作成
     image_grid = make_grid(restored_images_tensor[:100], nrow=10, normalize=True)
     # グリッド画像の保存
-    save_image(image_grid, os.path.join('./exp_mnist/logs/mnistall/samples/', f'restored_image_grid_{epoch}.png'))
+    save_image(image_grid, os.path.join('./exp_mnist/logs/mnist_bigmodel/samples/', f'restored_image_grid_{epoch}.png'))
 
 # train_id_labels = np.zeros(len(labels), dtype=np.int64)
 
